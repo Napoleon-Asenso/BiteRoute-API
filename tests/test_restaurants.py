@@ -58,10 +58,15 @@ async def test_list_restaurants_defensive_clamping_and_validation(
     assert neg_res.status_code == 400
     assert neg_res.json()["error"]["code"] == "BAD_REQUEST"
 
-    # Out of bounds limit > 100
+    # Limit > 100 clamped to 100
     over_res = await async_client.get("/api/v1/restaurants?limit=500")
-    assert over_res.status_code == 400
-    assert over_res.json()["error"]["code"] == "BAD_REQUEST"
+    assert over_res.status_code == 200
+    assert over_res.json()["meta"]["limit"] == 100
+
+    # Limit < 1 clamped to 1
+    under_res = await async_client.get("/api/v1/restaurants?limit=0")
+    assert under_res.status_code == 200
+    assert under_res.json()["meta"]["limit"] == 1
 
     # Invalid sort field
     sort_res = await async_client.get("/api/v1/restaurants?sort=unsupported_field")

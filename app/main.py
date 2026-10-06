@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
@@ -297,3 +298,6 @@ async def get_health_root() -> dict[str, Any]:
 
 # 5. Include Versioned Routes under /api/v1
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+# 6. Mount Minimal Consumer Client at /client
+app.mount("/client", StaticFiles(directory="static", html=True), name="client")
