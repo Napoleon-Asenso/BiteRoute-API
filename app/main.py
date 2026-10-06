@@ -1,5 +1,7 @@
 """FastAPI application factory, global middleware, and exception handlers."""
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -7,17 +9,29 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
+import app.models  # noqa: F401 - Register all models with Base.metadata
 from app.api.router import api_router
 from app.core.config import settings
+from app.core.database import Base, async_engine
 from app.core.exceptions import AppException
 from app.core.middleware import RateLimiterMiddleware
 from app.schemas.envelope import ResponseEnvelope
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    """Execute startup database schema initialization and application cleanup."""
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+
 
 app = FastAPI(
     title=settings.API_TITLE,
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # 1. Register CORS Middleware
