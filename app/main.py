@@ -9,11 +9,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
+from slowapi.errors import RateLimitExceeded
+
 import app.models  # noqa: F401 - Register all models with Base.metadata
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.database import Base, async_engine
 from app.core.exceptions import AppException
+from app.core.limiter import limiter
 from app.core.middleware import RateLimiterMiddleware
 from app.schemas.envelope import ResponseEnvelope
 
@@ -33,6 +36,25 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+# Attach slowapi limiter state
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def slowapi_rate_limit_handler(_request: Request, _exc: RateLimitExceeded) -> JSONResponse:
+    """Handle slowapi rate limit exceeded exceptions with uniform ErrorEnvelope."""
+    retry_after = 60
+    return JSONResponse(
+        status_code=429,
+        content={
+            "error": {
+                "code": "RATE_LIMIT_EXCEEDED",
+                "message": f"Too many requests. Please wait {retry_after} seconds before retrying.",
+            }
+        },
+        headers={"Retry-After": str(retry_after)},
+    )
 
 # 1. Register CORS Middleware
 app.add_middleware(
