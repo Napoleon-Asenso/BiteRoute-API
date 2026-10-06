@@ -1,10 +1,5 @@
 ---
-name: database-schema
-trigger:
-  glob:
-    - "app/models/**/*.py"
-    - "app/schemas/**/*.py"
-    - "scripts/**/*.py"
+trigger: glob
 description: Rules for database models, migrations, foreign key constraints, integer cents currency, and UTC timestamps.
 ---
 

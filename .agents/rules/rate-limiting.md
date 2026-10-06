@@ -1,11 +1,5 @@
 ---
-name: rate-limiting
-trigger:
-  glob:
-    - "app/api/**/*.py"
-    - "app/main.py"
-    - "app/core/config.py"
-    - "app/core/middleware.py"
+trigger: glob
 description: Rate limiting rules enforcing IP-based sliding window (100 req/min), standard headers, and 429 Retry-After responses.
 ---
 

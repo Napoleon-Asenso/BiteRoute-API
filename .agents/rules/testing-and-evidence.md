@@ -1,8 +1,5 @@
 ---
-name: testing-and-evidence
-trigger:
-  glob:
-    - "tests/**/*.py"
+trigger: glob
 description: Testing rules enforcing automated pytest test suite, seed idempotency checks, and curl command verification.
 ---
 
