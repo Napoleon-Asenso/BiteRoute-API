@@ -50,10 +50,12 @@ async def list_restaurants(
     # 1. Parameter Clamping and Validation
     if offset < 0:
         raise BadRequestException("Parameter 'offset' cannot be negative.")
+    
+    # Defensive Clamping: clamp limit to [1, 100]
     if limit > 100:
-        raise BadRequestException("Parameter 'limit' cannot exceed 100.")
-    if limit < 1:
-        raise BadRequestException("Parameter 'limit' must be at least 1.")
+        limit = 100
+    elif limit < 1:
+        limit = 1
 
     active_sort: str = sort_by or sort or "name"
     if active_sort not in ALLOWED_SORT_FIELDS:
