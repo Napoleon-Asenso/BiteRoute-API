@@ -1,5 +1,7 @@
 """Database connectivity, engine initialization, and session dependency providers."""
 
+import re
+import urllib.parse
 from collections.abc import AsyncGenerator, Generator
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import (
@@ -19,8 +21,42 @@ class Base(DeclarativeBase):
     pass
 
 
+def sanitize_database_url(url: str) -> str:
+    """Sanitize database URL by stripping quotes, fixing password encoding and Supabase IPv4 mapping."""
+    if not url:
+        return url
+    url = url.strip().strip("'").strip('"')
+
+    # If this is a Supabase direct URL (db.<ref>.supabase.co), convert to IPv4 connection pooler
+    supabase_match = re.match(
+        r"^(postgres(?:ql)?(?:\+\w+)?)://([^:]+):(.+)@db\.([a-z0-9]+)\.supabase\.co(?::\d+)?(/.*)?$",
+        url,
+    )
+    if supabase_match:
+        scheme, user, raw_pass, ref, path = supabase_match.groups()
+        pooler_user = f"{user}.{ref}" if not user.endswith(f".{ref}") else user
+        encoded_pass = urllib.parse.quote(urllib.parse.unquote(raw_pass), safe="")
+        pooler_host = "aws-0-eu-west-1.pooler.supabase.com:5432"
+        db_path = path or "/postgres"
+        return f"{scheme}://{pooler_user}:{encoded_pass}@{pooler_host}{db_path}"
+
+    # Handle connection pooler URL if password contains unencoded @
+    pooler_match = re.match(
+        r"^(postgres(?:ql)?(?:\+\w+)?)://([^:]+):(.+)@(aws-0-[a-z0-9-]+\.pooler\.supabase\.com(?::\d+)?)(/.*)?$",
+        url,
+    )
+    if pooler_match:
+        scheme, user, raw_pass, host, path = pooler_match.groups()
+        encoded_pass = urllib.parse.quote(urllib.parse.unquote(raw_pass), safe="")
+        db_path = path or "/postgres"
+        return f"{scheme}://{user}:{encoded_pass}@{host}{db_path}"
+
+    return url
+
+
 def get_async_database_url(url: str) -> str:
     """Normalize a database URL to use an asynchronous driver."""
+    url = sanitize_database_url(url)
     if url.startswith("sqlite:///"):
         return url.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
     if url.startswith("postgresql://"):
@@ -32,6 +68,7 @@ def get_async_database_url(url: str) -> str:
 
 def get_sync_database_url(url: str) -> str:
     """Normalize a database URL to use a synchronous driver."""
+    url = sanitize_database_url(url)
     if url.startswith("sqlite+aiosqlite:///"):
         return url.replace("sqlite+aiosqlite:///", "sqlite:///", 1)
     if url.startswith("postgresql+asyncpg://"):

@@ -1,5 +1,6 @@
 """FastAPI application factory, global middleware, and exception handlers."""
 
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -26,11 +27,12 @@ from app.schemas.envelope import ResponseEnvelope
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """Execute startup database schema initialization and application cleanup."""
-    try:
-        async with async_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-    except Exception:
-        pass
+    if not os.environ.get("VERCEL"):
+        try:
+            async with async_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+        except Exception:
+            pass
     yield
 
 
