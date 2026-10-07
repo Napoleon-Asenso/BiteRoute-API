@@ -270,14 +270,14 @@ async def http_exception_handler(
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(_request: Request, _exc: Exception) -> JSONResponse:
+async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
     """Catch unhandled runtime exceptions and return standard 500 error envelope."""
     return JSONResponse(
         status_code=500,
         content={
             "error": {
                 "code": "INTERNAL_SERVER_ERROR",
-                "message": "An internal server error occurred.",
+                "message": f"An internal server error occurred: {str(exc)}",
             }
         },
     )
