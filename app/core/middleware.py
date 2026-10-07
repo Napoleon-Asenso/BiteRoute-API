@@ -96,6 +96,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
             reset_epoch = int(record.timestamps[0] + settings.RATE_LIMIT_WINDOW_SECONDS)
 
         response = await call_next(request)
+        response.headers["X-Request-Path"] = request.url.path
         response.headers["X-RateLimit-Limit"] = str(settings.RATE_LIMIT_REQUESTS)
         response.headers["X-RateLimit-Remaining"] = str(remaining)
         response.headers["X-RateLimit-Reset"] = str(reset_epoch)
