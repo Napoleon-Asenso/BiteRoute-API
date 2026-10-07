@@ -284,6 +284,15 @@ async def unhandled_exception_handler(_request: Request, _exc: Exception) -> JSO
 
 
 # 4. Root Health Probe Endpoint (Milestone 1 requirement)
+@app.get("/api/index.py")
+async def get_index_debug(request: Request) -> dict[str, Any]:
+    """Inspect request headers passed by Vercel."""
+    return {
+        "headers": dict(request.headers),
+        "path": request.scope.get("path"),
+    }
+
+
 @app.get(
     "/health",
     response_model=ResponseEnvelope[dict[str, str]],
