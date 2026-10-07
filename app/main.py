@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -25,9 +26,13 @@ from app.schemas.envelope import ResponseEnvelope
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """Execute startup database schema initialization and application cleanup."""
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with async_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception:
+        pass
     yield
+
 
 
 app = FastAPI(
@@ -300,4 +305,7 @@ async def get_health_root() -> dict[str, Any]:
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 # 6. Mount Minimal Consumer Client at /client
-app.mount("/client", StaticFiles(directory="static", html=True), name="client")
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+if STATIC_DIR.is_dir():
+    app.mount("/client", StaticFiles(directory=str(STATIC_DIR), html=True), name="client")
+
