@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
@@ -306,8 +307,432 @@ async def get_health_root() -> dict[str, Any]:
 # 5. Include Versioned Routes under /api/v1
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
-# 6. Mount Minimal Consumer Client at /client
+# 6. Self-Contained Embedded Consumer Client (Permanent Vercel Serverless Reliability)
+CONSUMER_HTML: str = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BiteRoute API — Live Consumer Client</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --border: #e2e8f0;
+      --badge-bg: #eff6ff;
+      --badge-text: #1d4ed8;
+      --star: #eab308;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+
+    h1 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    p.subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 0.25rem;
+    }
+
+    /* Controls bar */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      background: var(--card-bg);
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    select {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      background-color: #fff;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    select:focus {
+      outline: 2px solid var(--primary);
+    }
+
+    /* List container */
+    .restaurant-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.875rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .restaurant-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .restaurant-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .restaurant-info h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+      color: var(--text);
+    }
+
+    .restaurant-address {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .restaurant-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .badge {
+      background: var(--badge-bg);
+      color: var(--badge-text);
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .rating {
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .rating-star {
+      color: var(--star);
+      font-size: 1rem;
+    }
+
+    .fee-container {
+      text-align: right;
+      min-width: 120px;
+    }
+
+    .fee {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .fee-sub {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* Pagination controls */
+    .pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      background-color: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    button:hover:not(:disabled) {
+      background-color: var(--primary-hover);
+    }
+
+    button:disabled {
+      background-color: #cbd5e1;
+      cursor: not-allowed;
+    }
+
+    .page-info {
+      font-size: 0.875rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* Status and Feedback */
+    .status-box {
+      text-align: center;
+      padding: 3rem 1rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+    }
+
+    .error-box {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>BiteRoute API — Live Consumer Client</h1>
+      <p class="subtitle">Single-page application consuming <code>/api/v1/restaurants</code></p>
+    </header>
+
+    <div class="controls">
+      <div class="filter-group">
+        <label for="categoryFilter">Category Filter:</label>
+        <select id="categoryFilter">
+          <option value="">All</option>
+          <option value="Pizza">Pizza</option>
+          <option value="Burgers">Burgers</option>
+          <option value="Mexican">Mexican</option>
+          <option value="Sushi">Sushi</option>
+          <option value="Bakery">Bakery</option>
+          <option value="Italian">Italian</option>
+          <option value="Mediterranean">Mediterranean</option>
+          <option value="Vegan">Vegan</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Dynamic Content Area -->
+    <div id="contentArea">
+      <div class="status-box">Loading restaurants...</div>
+    </div>
+
+    <!-- Pagination controls -->
+    <div class="pagination" id="paginationControls" style="display: none;">
+      <button id="prevBtn" disabled>&larr; Previous</button>
+      <span class="page-info" id="pageInfoText">Showing page 1 (offset 0 of 0 total)</span>
+      <button id="nextBtn">Next &rarr;</button>
+    </div>
+  </div>
+
+  <script>
+    // Client State
+    let currentOffset = 0;
+    const currentLimit = 10;
+    let currentCategory = "";
+    let totalItems = 0;
+    let hasMore = false;
+
+    const contentArea = document.getElementById("contentArea");
+    const categoryFilter = document.getElementById("categoryFilter");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const pageInfoText = document.getElementById("pageInfoText");
+    const paginationControls = document.getElementById("paginationControls");
+
+    function formatCurrency(cents) {
+      return "$" + (cents / 100).toFixed(2);
+    }
+
+    async function fetchRestaurants() {
+      contentArea.innerHTML = `<div class="status-box">Loading restaurants...</div>`;
+
+      const params = new URLSearchParams({
+        limit: currentLimit,
+        offset: currentOffset,
+        sort: "name",
+        order: "asc"
+      });
+
+      if (currentCategory) {
+        params.append("category", currentCategory);
+      }
+
+      const apiUrl = window.location.origin + "/api/v1/restaurants?" + params.toString();
+
+      try {
+        const response = await fetch(apiUrl);
+        const result = await response.json();
+
+        if (!response.ok) {
+          const errMsg = (result && result.error && result.error.message) || `HTTP Error ${response.status}`;
+          contentArea.innerHTML = `<div class="status-box error-box"><strong>Error:</strong> ${errMsg}</div>`;
+          paginationControls.style.display = "none";
+          return;
+        }
+
+        renderRestaurants(result.data, result.meta);
+      } catch (err) {
+        contentArea.innerHTML = `<div class="status-box error-box"><strong>Network Error:</strong> Failed to connect to API.</div>`;
+        paginationControls.style.display = "none";
+      }
+    }
+
+    function renderRestaurants(restaurants, meta) {
+      if (!restaurants || restaurants.length === 0) {
+        contentArea.innerHTML = `<div class="status-box">No restaurants found for this category</div>`;
+        paginationControls.style.display = "none";
+        return;
+      }
+
+      totalItems = meta.total;
+      hasMore = meta.hasMore;
+
+      const html = restaurants.map(r => {
+        const address = r.address || (r.address_street ? `${r.address_street}, ${r.address_city || 'San Francisco'}, ${r.address_postal_code || '94103'}` : 'San Francisco, CA');
+        const category = r.category || r.cuisine_type || 'General';
+        const rating = Number(r.rating || 0).toFixed(2);
+        const fee = formatCurrency(r.delivery_fee_cents || 0);
+
+        return `
+          <div class="restaurant-card">
+            <div class="restaurant-info">
+              <h3>${r.name}</h3>
+              <div class="restaurant-address">${address}</div>
+              <div class="restaurant-meta">
+                <span class="badge">${category}</span>
+                <span class="rating"><span class="rating-star">&#9733;</span> ${rating}</span>
+                <span>&bull;</span>
+                <span>${r.estimated_delivery_minutes || 30} min delivery</span>
+              </div>
+            </div>
+            <div class="fee-container">
+              <div class="fee">${fee}</div>
+              <div class="fee-sub">delivery fee</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      contentArea.innerHTML = `<div class="restaurant-list">${html}</div>`;
+
+      // Update Pagination UI
+      paginationControls.style.display = "flex";
+      prevBtn.disabled = currentOffset <= 0;
+      nextBtn.disabled = !hasMore;
+
+      const currentPage = Math.floor(currentOffset / currentLimit) + 1;
+      pageInfoText.textContent = `Showing page ${currentPage} (offset ${currentOffset} of ${totalItems} total)`;
+    }
+
+    // Event Listeners
+    categoryFilter.addEventListener("change", (e) => {
+      currentCategory = e.target.value;
+      currentOffset = 0;
+      fetchRestaurants();
+    });
+
+    prevBtn.addEventListener("click", () => {
+      if (currentOffset > 0) {
+        currentOffset = Math.max(0, currentOffset - currentLimit);
+        fetchRestaurants();
+      }
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (hasMore) {
+        currentOffset += currentLimit;
+        fetchRestaurants();
+      }
+    });
+
+    // Initial Fetch
+    fetchRestaurants();
+  </script>
+</body>
+</html>
+"""
+
+
+@app.get(
+    "/client",
+    response_class=HTMLResponse,
+    include_in_schema=False,
+    summary="Minimal Consumer Client",
+)
+@app.get(
+    "/",
+    response_class=HTMLResponse,
+    include_in_schema=False,
+    summary="Root Consumer Client",
+)
+async def get_consumer_client() -> HTMLResponse:
+    """Serve the minimal consumer single-page application directly."""
+    return HTMLResponse(content=CONSUMER_HTML, status_code=200)
+
+
+# 7. Mount Minimal Consumer Client at /client/ (Static fallback)
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 if STATIC_DIR.is_dir():
-    app.mount("/client", StaticFiles(directory=str(STATIC_DIR), html=True), name="client")
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+
 
