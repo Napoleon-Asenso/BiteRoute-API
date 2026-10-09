@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+from app.core.database import async_engine
 from app.main import app
 
 
@@ -13,3 +14,4 @@ async def async_client() -> AsyncGenerator[AsyncClient, None]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         yield client
+    await async_engine.dispose()

@@ -106,23 +106,34 @@ AsyncSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
 )
 
 # Synchronous engine & session factory (used for tooling/scripts)
-engine = create_engine(
-    sync_db_url,
-    echo=settings.DEBUG,
-    **sync_engine_args,
-)
-
-SessionLocal: sessionmaker[Session] = sessionmaker(
-    bind=engine,
-    autocommit=False,
-    autoflush=False,
-)
+try:
+    engine = create_engine(
+        sync_db_url,
+        echo=settings.DEBUG,
+        **sync_engine_args,
+    )
+    SessionLocal: sessionmaker[Session] = sessionmaker(
+        bind=engine,
+        autocommit=False,
+        autoflush=False,
+    )
+except Exception:
+    engine = None
+    SessionLocal = None
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency yielding an asynchronous database session."""
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+        except Exception:
+            if session.is_active:
+                try:
+                    await session.rollback()
+                except Exception:
+                    pass
+            raise
 
 
 def get_sync_db() -> Generator[Session, None, None]:
